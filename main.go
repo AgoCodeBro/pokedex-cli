@@ -60,6 +60,11 @@ func initCommands() {
                                   description : "Takes the name of a pokemon as an argument and shows its stats",
                                   callback :  commandInspect,
                                  }
+	
+    commands["pokedex"] = cliCommand{name: "pokedex",
+                                  description : "Lists all of the pokemon that you have caught",
+                                  callback :  commandPokedex,
+                                 }
 }
 
 
@@ -221,7 +226,15 @@ func commandInspect(c *config, inputs []string) error {
 	}
 
 	return nil
+}
 
+func commandPokedex(c *config, inputs []string) error {
+	fmt.Printf("Your pokedex:\n")
+	for name, _ := range c.pokedex {
+		fmt.Printf("  -%v\n", name)
+	}
+
+	return nil
 }
 
 // Other Functions
