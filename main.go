@@ -55,6 +55,11 @@ func initCommands() {
 																		 description : "Takes the name of a pokemon as an argument and attempts to catch it",
 																		 callback : commandCatch,
 																		}
+
+    commands["inspect"] = cliCommand{name: "inspect",
+                                  description : "Takes the name of a pokemon as an argument and shows its stats",
+                                  callback :  commandInspect,
+                                 }
 }
 
 
@@ -78,7 +83,10 @@ func main() {
         if !ok {
             fmt.Printf("Not a valid command\n")
         } else {
-            val.callback(&config, inputs)
+					err := val.callback(&config, inputs)
+					if err != nil {
+						fmt.Printf("%v\n", err)
+					}
         }
     }
 }
@@ -170,7 +178,6 @@ func commandCatch(c *config, inputs []string) error {
 
 	response, err := pokeapi.GetPokemon(inputs[1])
 	if err != nil {
-		fmt.Printf("%v", err)
 		return err
 	}
 
@@ -187,6 +194,35 @@ func commandCatch(c *config, inputs []string) error {
 
 	return nil
 }	
+
+func commandInspect(c *config, inputs []string) error {
+	if len(inputs) < 2 {
+		fmt.Printf("Inspect requires an argument\n")
+		return nil
+	}
+
+	pokemon, exists := c.pokedex[inputs[1]]
+	if !exists {
+		fmt.Printf("You havent caught %v yet!\n", inputs[1])
+		return nil
+	}
+
+	fmt.Printf("Name: %v\n", pokemon.Name)
+	fmt.Printf("Height: %v\n", pokemon.Height)
+	fmt.Printf("Weight: %v\n", pokemon.Weight)
+	fmt.Printf("Stats:\n")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf("  -%v: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+
+	fmt.Printf("Types:\n")
+	for _, pokeType := range pokemon.Types {
+		fmt.Printf("  - %v\n", pokeType.Type.Name)
+	}
+
+	return nil
+
+}
 
 // Other Functions
 func cleanInput(text string) []string {
