@@ -6,12 +6,14 @@ import ("fmt"
         "os"
         "errors"
 				"pokedex/internal/pokeapi"
+				"math/rand"
         )
 
 // Config to hold pev and next page
 type config struct {
 	next  *string
 	prev  *string
+	pokedex map[string]pokeapi.Pokemon
 }
 
 // Commands
@@ -48,6 +50,21 @@ func initCommands() {
 																		 description : "Takes the name of a location area as an argument and returns the pokemon found there",
 																		 callback : commandExplore,
 																		}
+
+		commands["catch"] = cliCommand{name : "catch",
+																		 description : "Takes the name of a pokemon as an argument and attempts to catch it",
+																		 callback : commandCatch,
+																		}
+
+    commands["inspect"] = cliCommand{name: "inspect",
+                                  description : "Takes the name of a pokemon as an argument and shows its stats",
+                                  callback :  commandInspect,
+                                 }
+	
+    commands["pokedex"] = cliCommand{name: "pokedex",
+                                  description : "Lists all of the pokemon that you have caught",
+                                  callback :  commandPokedex,
+                                 }
 }
 
 
@@ -58,6 +75,7 @@ func main() {
 		initialUrl := "https://pokeapi.co/api/v2/location-area/"
 	  config := config{next : &initialUrl,
 										prev : nil,
+										pokedex: make(map[string]pokeapi.Pokemon),
 									 }
 
 
@@ -70,7 +88,10 @@ func main() {
         if !ok {
             fmt.Printf("Not a valid command\n")
         } else {
-            val.callback(&config, inputs)
+					err := val.callback(&config, inputs)
+					if err != nil {
+						fmt.Printf("%v\n", err)
+					}
         }
     }
 }
@@ -151,6 +172,68 @@ func commandExplore(c *config, inputs []string) error {
 	for _, encounter := range response.PokemonEncounters {
 		fmt.Printf("%v\n", encounter.Pokemon.Name)
 	}
+	return nil
+}
+
+func commandCatch(c *config, inputs []string) error {
+	if len(inputs) < 2 {
+		fmt.Printf("Catch requires an argument\n")
+		return nil
+	}
+
+	response, err := pokeapi.GetPokemon(inputs[1])
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Throwing a Pokeball at %v...\n", inputs[1])
+
+	baseLevel := response.BaseExperience
+
+	if roll := rand.Intn(1000); roll >= baseLevel {
+		fmt.Printf("%v was caught!\n", inputs[1])
+		c.pokedex[inputs[1]] = response
+	} else {
+		fmt.Printf("%v escaped!\n", inputs[1])
+	}
+
+	return nil
+}	
+
+func commandInspect(c *config, inputs []string) error {
+	if len(inputs) < 2 {
+		fmt.Printf("Inspect requires an argument\n")
+		return nil
+	}
+
+	pokemon, exists := c.pokedex[inputs[1]]
+	if !exists {
+		fmt.Printf("You havent caught %v yet!\n", inputs[1])
+		return nil
+	}
+
+	fmt.Printf("Name: %v\n", pokemon.Name)
+	fmt.Printf("Height: %v\n", pokemon.Height)
+	fmt.Printf("Weight: %v\n", pokemon.Weight)
+	fmt.Printf("Stats:\n")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf("  -%v: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+
+	fmt.Printf("Types:\n")
+	for _, pokeType := range pokemon.Types {
+		fmt.Printf("  - %v\n", pokeType.Type.Name)
+	}
+
+	return nil
+}
+
+func commandPokedex(c *config, inputs []string) error {
+	fmt.Printf("Your pokedex:\n")
+	for name, _ := range c.pokedex {
+		fmt.Printf("  -%v\n", name)
+	}
+
 	return nil
 }
 
