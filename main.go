@@ -18,7 +18,7 @@ type config struct {
 type cliCommand struct {
     name        string
     description string
-    callback    func(*config) error
+    callback    func(*config, []string) error
 }
 
 var commands = make(map[string]cliCommand)
@@ -43,6 +43,11 @@ func initCommands() {
 																 description : "Displays the previous page of locations",
 																 callback : commandMapb,
 																}
+
+		commands["explore"] = cliCommand{name : "explore",
+																		 description : "Takes the name of a location area as an argument and returns the pokemon found there",
+																		 callback : commandExplore,
+																		}
 }
 
 
@@ -65,19 +70,19 @@ func main() {
         if !ok {
             fmt.Printf("Not a valid command\n")
         } else {
-            val.callback(&config)
+            val.callback(&config, inputs)
         }
     }
 }
 
 // Command Callbacks
-func commandExit(c *config) error {
+func commandExit(c *config, inputs []string) error {
     fmt.Printf("Closing the Pokedex... Goodbye!\n")
     os.Exit(0)
     return errors.New("IDK how you got here bruh, failed to exit")
 }
 
-func commandHelp(c *config) error {
+func commandHelp(c *config, inputs []string) error {
     fmt.Printf("Welcome to the Pokedex!\n   Usage:\n\n")
     for _, value := range commands {
         fmt.Printf("%v: %v\n", value.name, value.description)
@@ -85,7 +90,7 @@ func commandHelp(c *config) error {
     return nil
 }
 
-func commandMap(c *config) error {
+func commandMap(c *config, inputs []string) error {
 	if c.next == nil {
 		fmt.Printf("At final page")
 		return nil
@@ -110,7 +115,7 @@ func commandMap(c *config) error {
 
 }
 
-func commandMapb(c *config) error {
+func commandMapb(c *config, inputs []string) error {
 	if c.prev == nil {
 		fmt.Printf("At the first page\n")
 		return nil
@@ -130,6 +135,22 @@ func commandMapb(c *config) error {
 		fmt.Printf("%v\n", result.Name)
 	}
 
+	return nil
+}
+
+func commandExplore(c *config, inputs []string) error {
+	if len(inputs) < 2 {
+		fmt.Printf("Explore requires an argument\n")
+		return nil
+	}
+	response, err := pokeapi.GetLocationArea(inputs[1])
+	if err != nil {
+		return err
+	}
+
+	for _, encounter := range response.PokemonEncounters {
+		fmt.Printf("%v\n", encounter.Pokemon.Name)
+	}
 	return nil
 }
 
