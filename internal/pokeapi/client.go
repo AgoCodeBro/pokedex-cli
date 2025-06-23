@@ -176,4 +176,54 @@ func GetLocationArea(areaName string) (AreaInfo, error) {
 }
 
 
+func GetPokemon(name string) (Pokemon, error) {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%v", name)
+
+	if stored, exists := cache.Get(url); exists {
+		var result Pokemon
+		if err := json.Unmarshal(stored, &result); err != nil {
+			errString := fmt.Sprintf("Failed to decode json: %v", err)
+			return Pokemon{}, errors.New(errString)
+		}
+		return result, nil
+	}
+	
+	client := http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		errString := fmt.Sprintf("Failed to create request: %v", err)
+		return Pokemon{}, errors.New(errString)
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		errString := fmt.Sprintf("Failed to get request: %v", err)
+		return Pokemon{}, errors.New(errString)
+	}
+
+	defer res.Body.Close()
+
+	if statusCode := res.StatusCode; statusCode < 200 || statusCode > 299 {
+		errString := fmt.Sprintf("Error Status Code: %v", statusCode)
+		return Pokemon{}, errors.New(errString)
+	}
+	
+	var result Pokemon
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		errString := fmt.Sprintf("Failed to convert request to []byte: %v", err)
+		return Pokemon{}, errors.New(errString)
+	}
+	
+	if err := json.Unmarshal(bytes, &result); err != nil {
+		errString := fmt.Sprintf("Failed to decode json: %v", err)
+		return Pokemon{}, errors.New(errString)
+	}
+
+	cache.Add(url, bytes)
+	return result, nil
+}
+
+
 
